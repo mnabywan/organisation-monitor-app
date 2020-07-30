@@ -1,0 +1,11 @@
+@(peopleForm: Form[(String, String)])(implicit request: RequestHeader, messagesProvider: MessagesProvider)
+@import helper._
+
+<h2>Add a new person</h2>
+
+@form(action = CSRF(routes.HomeController.newPerson)) {
+    @inputText(peopleForm("First name"))
+    @inputText(peopleForm("Last name"))
+    <input type="submit" value="Create">
+}
+
