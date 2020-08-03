@@ -7,8 +7,8 @@ import javax.inject._
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data._
-
 import play.api.mvc._
+import utils.Constants
 
 
 /**
@@ -18,7 +18,6 @@ import play.api.mvc._
 @Singleton
 class HomeController @Inject()(cc: ControllerComponents) extends AbstractController(cc) with play.api.i18n.I18nSupport {
 
-  val eventsTopic = "events2"
   private val producer = new Producer();
   private val endpoint = "https://api.pipedream.com/v1/sources/dc_gzuN4A/event_summaries?expand=event"
   private val authToken = "1797a52f2127c032e45f4a2fa613b7cc"
@@ -54,7 +53,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     peopleForm.bindFromRequest.fold(
       errors => BadRequest(views.html.people(errors)),
       person =>{
-        producer.writeToKafkaFromForm("people4", person)
+        producer.writeToKafkaFromForm(Constants.peopleTopic, person)
         Redirect(routes.HomeController.people())
       }
     )
@@ -66,7 +65,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
 
     jsonBody
       .map { json =>
-        producer.writeEventToKafka(eventsTopic, json)
+        producer.writeEventToKafka(Constants.eventsTopic, json)
         Ok("Got: " + (json \ "method").as[String])
       }
       .getOrElse {
