@@ -12,9 +12,34 @@ import scala.collection.JavaConverters._
 import scala.util.parsing.json.JSONArray
 
 object Consumer {
+
+  val eventsFile = "events"
+  val peopleFile = "people"
+
   def main(args: Array[String]): Unit = {
-    //    consumeFromKafka(Constants.peopleTopic)
+//    consumeFromKafka(Constants.peopleTopic)
     consumeEventsFromKafka(Constants.eventsTopic)
+  }
+
+
+  def getFile(dir : String, fileName:String, fileNum :Int) :File = {
+    var file = new File(dir + fileName + "_" + fileNum.toString + ".json")
+
+    var size = file.length()
+    var fileNumber = fileNum
+    while(size > Constants.maxFileSize){
+      fileNumber +=1
+      file = new File(dir + fileName + "_" + fileNumber.toString + ".json")
+      size = file.length
+    }
+    println(file.getName)
+    file
+  }
+
+  def getNextFile(dir : String, fileName : String, fileNum :Int): File={
+    var fileNumber = fileNum + 1
+    var file = new File(dir + fileName + "_" + fileNumber.toString + ".json")
+    file
   }
 
   def consumeFromKafka(topic: String) = {
@@ -26,33 +51,33 @@ object Consumer {
     props.put("group.id", "consumer-group")
     val consumer: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
     consumer.subscribe(util.Arrays.asList(topic))
-    var peopleList = new JsArray()
-
-    val sdf = new SimpleDateFormat("ddMMyyyy_hhmmss")
-    val curDate = new Date
-    val strDate = sdf.format(curDate)
-    val fileName = Constants.peopleJsonDir + "people" + strDate + ".json"
-    val file = new File(fileName)
+    var fileNum = 1
+    var file = getFile(Constants.peopleJsonDir, peopleFile, fileNum)
 
     try {
       while (true) {
         val record = consumer.poll(1000).asScala
         for (data <- record.iterator) {
-          val bw = new BufferedWriter(new FileWriter(file))
+          if (file.length > Constants.maxFileSize){
+            println("Get next file")
+            file = getNextFile(Constants.eventsJsonDir, peopleFile, fileNum)
+            fileNum += 1
+          }
+          val bw = new BufferedWriter(new FileWriter(file, true))
           val msg = data.value()
           val json = Json parse msg
-          peopleList = json +: peopleList
-          println(peopleList.toString())
+
           val firstName = (json \ "first_name").as[String]
           val lastName = (json \ "last_name").as[String]
           println("Name: " + firstName + " " + lastName)
-          bw.write(peopleList.toString())
+          bw.write(json.toString())
+          bw.write("\n")
           bw.close()
+          println(file.length())
         }
       }
     }
     finally {
-
     }
   }
 
@@ -66,26 +91,28 @@ object Consumer {
     props.put("group.id", "consumer-group")
     val consumer: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
     consumer.subscribe(util.Arrays.asList(topic))
-    var eventsList = new JsArray()
+    var fileNum = 1
+    var file = getFile(Constants.eventsJsonDir, eventsFile, fileNum)
 
-    val sdf = new SimpleDateFormat("ddMMyyyy_hhmmss")
-    val curDate = new Date
-    val strDate = sdf.format(curDate)
-    val fileName = Constants.eventsJsonDir + "events" + strDate + ".json"
-    val file = new File(fileName)
 
     try {
       while (true) {
         val record = consumer.poll(1000).asScala
         for (data <- record.iterator) {
-          val bw = new BufferedWriter(new FileWriter(file))
+          if (file.length > Constants.maxFileSize){
+            println("Get next file")
+            file = getNextFile(Constants.eventsJsonDir, eventsFile, fileNum)
+            fileNum += 1
+          }
+          val bw = new BufferedWriter(new FileWriter(file, true))
           val msg = data.value()
           val json = Json parse msg
           //          println("Commit message: " + (json\ "body" \ "commits" \ 0 \ "message" ).as[String])
-          eventsList = json +: eventsList
           Json prettyPrint json
-          bw.write(eventsList.toString())
+          bw.write(json.toString())
+          bw.write("\n")
           bw.close()
+          println(file.length())
         }
       }
     }
