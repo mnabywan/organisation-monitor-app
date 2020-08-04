@@ -1,13 +1,10 @@
 import java.io.{BufferedWriter, File, FileWriter}
 import java.util
 import java.text.SimpleDateFormat
-
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import java.util.{Date, Properties}
-
 import utils.Constants
 import play.api.libs.json.{JsArray, Json, Writes}
-
 import scala.collection.JavaConverters._
 import scala.util.parsing.json.JSONArray
 
