@@ -1,6 +1,5 @@
 package controllers
 
-
 import scalaj.http.{Http, HttpRequest, HttpResponse}
 import play.api.libs.json._
 import javax.inject._
@@ -9,7 +8,8 @@ import play.api.data.Forms._
 import play.api.data._
 import play.api.mvc._
 import utils.Constants
-
+import views._
+import ranker.RankerDemo
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
@@ -21,7 +21,6 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
   private val producer = new Producer();
   private val endpoint = "https://api.pipedream.com/v1/sources/dc_gzuN4A/event_summaries?expand=event"
   private val authToken = "1797a52f2127c032e45f4a2fa613b7cc"
-
 
 
   /**
@@ -82,4 +81,14 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     val events = Json parse response.body.toString
     Ok(views.html.events(events))
   }
+
+  def commitsAll = Action{
+    val commits = RankerDemo.getCommitsNumber()
+    Ok(views.html.ranking(commits))
+  }
+
+//  def commits(username:String) = Action{
+//    val commits = RankerDemo.getCommitsNumber(username)
+//    Ok(views.html.ranking(commits))
+//  }
 }

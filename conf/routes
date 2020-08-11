@@ -7,6 +7,7 @@
 GET     /                           controllers.HomeController.index
 GET     /events                     controllers.HomeController.gitEvents
 GET     /people                     controllers.HomeController.people
+GET     /commits                    controllers.HomeController.commitsAll
 POST    /people                     controllers.HomeController.newPerson
 POST    /newEvent                   controllers.HomeController.newEvent
 # An example controller showing how to use dependency injection
