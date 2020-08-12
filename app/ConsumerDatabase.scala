@@ -81,6 +81,7 @@ object ConsumerDatabase{
   def insertJsonToDb(json : JsValue): Unit ={
     val jsonString = json.toString()
     collection.insertOne(Document.apply(jsonString))
+//    collection.updateOne()
   }
 
 

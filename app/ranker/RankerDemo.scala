@@ -53,10 +53,7 @@ object RankerDemo {
     var res = jsonizeDocs(result)
     println(res)
     res
-//    for(res <- result) {
-//      res.toJson()
-//      println(res.getString("_id") + " " + res.getInteger("commits", 0))
-//    }
+
   }
 
   def jsonizeDocs(cDocument: Seq[Document]): String = {
@@ -200,7 +197,12 @@ object RankerDemo {
        Aggregates.group("$username", Accumulators.sum("pull_request", 1))
     )).headResult()
 
-    return(result.getInteger("modified_files", 0))
+    if (result == null){
+      return 0
+    }
+    else {
+      return(result.getInteger("pull_request"))
+    }
   }
 
 

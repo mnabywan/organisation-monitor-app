@@ -9,6 +9,7 @@ import play.api.data._
 import play.api.mvc._
 import utils.Constants
 import views._
+import model.User
 import ranker.RankerDemo
 
 /**
@@ -40,6 +41,17 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
 
   def people() = Action{ implicit request =>
     Ok(views.html.people(peopleForm))
+  }
+
+  def ranking(name:String) = Action{
+    val user = new User(name)
+    user.numberOfCommits = RankerDemo.getCommitsNumber(name)
+    user.numberOfAddedFiles = RankerDemo.getAddedFiles(name)
+    user.numberOfModifiedFiles = RankerDemo.getModifiedFiles(name)
+    user.numberOfRemovedFiles = RankerDemo.getRemovedFiles(name)
+    user.numberOfPullRequests = RankerDemo.getPullRequestsNumber(name)
+    user.countScore()
+    Ok(views.html.ranking(user.toString()))
   }
 
   def index = Action {
