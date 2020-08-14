@@ -2,6 +2,7 @@ package ranker
 
 import org.mongodb.scala.model.Filters.and
 import Helpers._
+import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model.{Accumulators, Aggregates, Filters}
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 
@@ -55,6 +56,23 @@ object RankerDemo {
     res
 
   }
+  def getCommitsNumberById(id: ObjectId) : Int = {
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(Filters.equal("_id", id)),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
+      Aggregates.unwind("$commits"),
+      Aggregates.group("$username", Accumulators.sum("commits", 1))
+    )).headResult()
+
+
+    if (result == null) {
+      return 0
+    }
+    else {
+      println(result.getString("_id") + " " + result.getInteger("commits"))
+      return (result.getInteger("commits"))
+    }
+  }
 
   def jsonizeDocs(cDocument: Seq[Document]): String = {
     val sb=new StringBuilder
@@ -88,6 +106,28 @@ object RankerDemo {
     }
 
     }
+
+
+  def getAddedFilesById(id : ObjectId): Int ={
+
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(Filters.equal("_id", id)),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
+      Aggregates.unwind("$commits"),
+      Aggregates.project(Document("username" -> 1, "commits"-> 1, "added_files" -> "$commits.added", "modified_files" -> "$commits.modified", "removed_files" ->"$commits.removed")),
+      Aggregates.unwind("$added_files"),
+      Aggregates.group("$username",  Accumulators.sum( "added_files" ,1))
+    )).headResult()
+
+
+    if (result == null){
+      return 0
+    }
+    else {
+      return(result.getInteger("added_files"))
+    }
+
+  }
 
 
   def getAddedFiles(): Unit ={
@@ -147,6 +187,27 @@ object RankerDemo {
 
   }
 
+  def getModifiedFilesById(id : ObjectId): Int ={
+
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(Filters.equal("id", id)),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
+      Aggregates.unwind("$commits"),
+      Aggregates.project(Document("username" -> 1, "commits"-> 1, "added_files" -> "$commits.added", "modified_files" -> "$commits.modified", "removed_files" ->"$commits.removed")),
+      Aggregates.unwind("$modified_files"),
+      Aggregates.group("$username",  Accumulators.sum( "modified_files" ,1))
+    )).headResult()
+
+
+    if (result == null){
+      return 0
+    }
+    else {
+      return result.getInteger("modified_files")
+    }
+
+  }
+
 
 
   def getRemovedFiles(username : String): Int ={
@@ -154,6 +215,26 @@ object RankerDemo {
     println("Removed files for " + username)
     var result = collection.aggregate(Seq(
       Aggregates.filter(and(Filters.exists("body.commits", true ), Filters.equal("body.pusher.name", username))),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
+      Aggregates.unwind("$commits"),
+      Aggregates.project(Document("username" -> 1,  "removed_files" ->"$commits.removed")),
+      Aggregates.unwind("$removed_files"),
+      Aggregates.group("$username",  Accumulators.sum( "removed_files" ,1))
+    )).headResult()
+
+    if (result == null){
+      return 0
+    }
+    else {
+      return result.getInteger("removed_files")
+    }
+  }
+
+
+  def getRemovedFilesById(id : ObjectId): Int ={
+
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(Filters.equal("_id", id)),
       Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
       Aggregates.unwind("$commits"),
       Aggregates.project(Document("username" -> 1,  "removed_files" ->"$commits.removed")),
@@ -205,6 +286,30 @@ object RankerDemo {
     }
   }
 
+  def getPullRequestsNumberById(id: ObjectId) : Int ={
+
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(Filters.equal("_id", id)),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
+      Aggregates.project(Document("username" -> "$body.pusher.name", "pull_requests" -> "$body.pull_requests")),
+      Aggregates.group("$username", Accumulators.sum("pull_request", 1))
+    )).headResult()
+
+    if (result == null){
+      return 0
+    }
+    else {
+      return(result.getInteger("pull_request"))
+    }
+  }
+
+
+
+  //  def example() = {
+//      collection.aggregate(Seq(
+//          Aggregates.filter(Filters.exists("body.commits", true )),
+//
+//  }
 
 //    collection.aggregate(Seq(
 //      Aggregates.filter(Filters.exists("body.commits", true )),
