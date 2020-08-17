@@ -16,13 +16,17 @@ object RankerDemo {
 
   def main(args : Array[String]): Unit ={
 
-//    getAddedFiles("mnabywan")
-//    getModifiedFiles("mnabywan")
-//    getRemovedFiles("differentuser")
-//    getAddedFiles()
-      println(getPullRequestsNumber("mnabywan"))
-//      getCommitsNumber()
+      println(getCommentsNumber("mnabywan"))
   }
+
+  def calculateRank(numberOfCommits : Int, numberOfAddedFiles :Int, numberOfModifiedFiles:Int, numberOfRemovedFiles: Int,
+                    numberOfPullRequests :Int, numberOfComments : Int): Int ={
+    var rank = 0: Int
+      rank = numberOfCommits * 3 + numberOfPullRequests * 5 +
+        (numberOfAddedFiles + numberOfModifiedFiles + numberOfRemovedFiles) * 1 + numberOfComments *2
+    return rank
+  }
+
 
   def getCommitsNumber(username: String) : Int = {
     println("Added files for " + username)
@@ -270,11 +274,11 @@ object RankerDemo {
 
   def getPullRequestsNumber(username: String) : Int ={
 
-    println("Removed files for " + username)
+    println("Pull requests for " + username)
     var result = collection.aggregate(Seq(
-      Aggregates.filter(and(Filters.exists("body.pull_request", true ), Filters.equal("body.pusher.name", username))),
-      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
-      Aggregates.project(Document("username" -> "$body.pusher.name", "pull_requests" -> "$body.pull_requests")),
+      Aggregates.filter(and(Filters.exists("body.pull_request", true ), Filters.equal("body.sender.login", username))),
+      Aggregates.project(Document("username" -> "$body.sender.login", "commits" -> "$body.commits")),
+      Aggregates.project(Document("username" -> "$body.sender.login", "pull_requests" -> "$body.pull_requests")),
        Aggregates.group("$username", Accumulators.sum("pull_request", 1))
     )).headResult()
 
@@ -290,8 +294,8 @@ object RankerDemo {
 
     var result = collection.aggregate(Seq(
       Aggregates.filter(Filters.equal("_id", id)),
-      Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
-      Aggregates.project(Document("username" -> "$body.pusher.name", "pull_requests" -> "$body.pull_requests")),
+      Aggregates.project(Document("username" -> "$body.sender.login", "commits" -> "$body.commits")),
+      Aggregates.project(Document("username" -> "$body.sender.login", "pull_requests" -> "$body.pull_requests")),
       Aggregates.group("$username", Accumulators.sum("pull_request", 1))
     )).headResult()
 
@@ -302,6 +306,25 @@ object RankerDemo {
       return(result.getInteger("pull_request"))
     }
   }
+
+
+  def getCommentsNumber(username: String) : Int ={
+
+    println("Comments for " + username)
+    var result = collection.aggregate(Seq(
+      Aggregates.filter(and(Filters.exists("body.comment", true ), Filters.equal("body.sender.login", username))),
+      Aggregates.project(Document("username" -> "$body.sender.login", "comment" -> "$body.comment")),
+      Aggregates.group("$username", Accumulators.sum("comment", 1))
+    )).headResult()
+
+    if (result == null){
+      return 0
+    }
+    else {
+      return(result.getInteger("comment"))
+    }
+  }
+
 
 
 

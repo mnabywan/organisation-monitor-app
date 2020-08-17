@@ -35,49 +35,50 @@ import scala.util.parsing.json.JSONArray
 import utils.{Constants, MongoConfiguration}
 //
 
-object ConsumerDatabase{
+object ConsumerDatabase {
 
   val mongoClient: MongoClient = MongoClient()
   val database: MongoDatabase = mongoClient.getDatabase("db")
   val collection: MongoCollection[Document] = database.getCollection("events")
-  val usersCollection : MongoCollection[Document] = database.getCollection("users")
+  val usersCollection: MongoCollection[Document] = database.getCollection("users")
 
 
   def main(args: Array[String]): Unit = {
     consumeEventsFromKafka(Constants.eventsTopic)
 
-//    example("ssaaaaaaaaaa")
   }
 
-  def example(user:String):Unit={
+  def example(user: String): Unit = {
     val searchUser = usersCollection.find(Filters.equal("_id", user)).headResult()
     println(searchUser)
     println(searchUser == null)
-    val doc : Document = Document("_id" -> user, "total_cfaas" -> 190)
+    val doc: Document = Document("_id" -> user, "total_cfaas" -> 190)
     val observable: Observable[UpdateResult] = usersCollection.replaceOne(Filters.equal("_id", user), doc)
     observable.subscribe(new Observer[UpdateResult] {
       override def onNext(result: UpdateResult): Unit = println("Updated")
+
       override def onError(e: Throwable): Unit = println("Failed")
+
       override def onComplete(): Unit = println("Completed")
     })
 
   }
 
-  def getCommitsNumberById(id: ObjectId) : Int = {
+  def getCommitsNumberById(id: ObjectId): Int = {
     var result = collection.aggregate(Seq(
-      Aggregates.filter( Filters.equal("_id", id)),
+      Aggregates.filter(Filters.equal("_id", id)),
       Aggregates.project(Document("username" -> "$body.pusher.name", "commits" -> "$body.commits")),
       Aggregates.unwind("$commits"),
       Aggregates.group("$username", Accumulators.sum("commits", 1))
     )).headResult()
 
 
-    if (result == null){
+    if (result == null) {
       return 0
     }
     else {
       println(result.getString("_id") + " " + result.getInteger("commits"))
-      return(result.getInteger("commits"))
+      return (result.getInteger("commits"))
     }
   }
 
@@ -109,8 +110,12 @@ object ConsumerDatabase{
   }
 
 
-  def insertJsonToDb(json : JsValue): Unit ={
-    var inserted : Boolean = false
+  def insertJsonToDb(json: JsValue): Unit = {
+    var inserted: Boolean = false
+    var commitsType : Boolean = false
+    var pullRequestType : Boolean = false
+    var commentType : Boolean = false
+
     val jsonString = json.toString()
     val doc = Document.apply(jsonString)
     println(doc.get("body"))
@@ -118,44 +123,54 @@ object ConsumerDatabase{
     val observable: Observable[Completed] = collection.insertOne(Document.apply(jsonString))
 
     observable.subscribe(new Observer[Completed] {
-      override def onNext(result: Completed): Unit = { inserted= true; println("Inserted")}
-      override def onError(e: Throwable): Unit = {inserted = false; println("Failed")}
+      override def onNext(result: Completed): Unit = {
+        inserted = true;
+        println("Inserted")
+      }
+
+      override def onError(e: Throwable): Unit = {
+        inserted = false;
+        println("Failed")
+      }
+
       override def onComplete(): Unit = println("Completed")
     })
 
-
-    if (inserted) {
       var numberOfCommits = 0
       var numberOfAddedFiles = 0
       var numberOfModifiedFiles = 0
       var numberOfRemovedFiles = 0
       var numberOfPullRequests = 0
+      var numberOfComments = 0
 
       var result = collection.aggregate(Seq(
-        Aggregates.project(Document("id" -> "$_id", "username" -> "$body.sender.login", "commits" -> "$body.commits", "pull_request" -> "$body.pull_request")),
+        Aggregates.project(Document("id" -> "$_id", "username" -> "$body.sender.login",
+          "commits" -> "$body.commits", "pull_request" -> "$body.pull_request", "comment" -> "$body.comment")),
         Aggregates.sort(Sorts.orderBy(Sorts.descending("id"))
         ))).headResult()
       println(result)
       var id = result.getObjectId("_id")
       var user = result.getString("username")
-      println(result.get("commits"))
-      println(user)
-      println(id)
+
 
       if (result.get("commits") != None) {
-        println("Get commtis")
-        numberOfCommits = RankerDemo.getCommitsNumberById(id)
-        numberOfAddedFiles = RankerDemo.getAddedFilesById(id)
-        numberOfModifiedFiles = RankerDemo.getModifiedFilesById(id)
-        numberOfRemovedFiles = RankerDemo.getRemovedFilesById(id)
+        commitsType = true
       }
       else if (result.get("pull_request") != None) {
-        println("Get pull requests")
-        numberOfPullRequests = RankerDemo.getPullRequestsNumberById(id)
+        pullRequestType = true
+      }
+      else if (result.get("comment") != None) {
+        commentType = true
       }
 
+      numberOfCommits = RankerDemo.getCommitsNumber(user)
+      numberOfAddedFiles = RankerDemo.getAddedFiles(user)
+      numberOfModifiedFiles = RankerDemo.getModifiedFiles(user)
+      numberOfRemovedFiles = RankerDemo.getRemovedFiles(user)
+      numberOfPullRequests = RankerDemo.getPullRequestsNumber(user)
+      numberOfComments = RankerDemo.getCommentsNumber(user)
 
-      val onCompleteUpdate = new Observer[UpdateResult] {
+    val onCompleteUpdate = new Observer[UpdateResult] {
         override def onNext(result: UpdateResult): Unit = println("Updated user. Result: " + result.toString)
         override def onError(e: Throwable): Unit = {
           println("ERROR: " + e.toString)
@@ -165,23 +180,61 @@ object ConsumerDatabase{
         }
       }
 
-
       val searchUser = usersCollection.find(Filters.equal("_id", user)).headResult()
-      if (searchUser == null){
-        val doc : Document = Document("_id" -> user)
-        usersCollection.insertOne(doc)
+      if (searchUser == null) {
+        val doc: Document = Document("_id" -> user, "total_commits"-> 0, "total_files_added" -> 0, "total_files_modified" ->0, "total_files_removed" -> 0,
+          "total_pull_requests" -> 0, "total_comments" -> 0, "rank" ->0)
+        val observable: Observable[Completed] = usersCollection.insertOne(doc)
+
+        observable.subscribe(new Observer[Completed] {
+          override def onNext(result: Completed): Unit = { println("Inserted") }
+          override def onError(e: Throwable): Unit = { println("Failed") }
+          override def onComplete(): Unit = println("Completed")
+        })
+
       }
-      usersCollection.updateOne(
-        Filters.equal("_id" , user),
-        Updates.inc("total_additions", numberOfAddedFiles)
+
+    var rank = RankerDemo.calculateRank(numberOfCommits, numberOfAddedFiles, numberOfModifiedFiles, numberOfRemovedFiles, numberOfPullRequests, numberOfComments)
+    println("Rank is " + rank)
+
+    if (commitsType == true) {
+      val userObservable: Observable[UpdateResult] = usersCollection.updateOne(Filters.equal("_id", user),
+        Updates.combine(Updates.set("total_commits", numberOfCommits), Updates.set("total_files_added", numberOfAddedFiles),
+      Updates.set("total_files_modified", numberOfModifiedFiles), Updates.set("total_files_removed", numberOfRemovedFiles), Updates.set("rank", rank))
+         )
+
+      userObservable.subscribe(new Observer[UpdateResult] {
+        override def onNext(result: UpdateResult): Unit = println("Updated")
+        override def onError(e: Throwable): Unit = println("Failed" + e.getMessage)
+        override def onComplete(): Unit = println("Completed")
+      })
+    }
+
+    else if (pullRequestType == true) {
+      val userObservable: Observable[UpdateResult] = usersCollection.updateOne(Filters.equal("_id", user),
+        Updates.combine(Updates.set("total_pull_requests", numberOfPullRequests), Updates.set("rank", rank))
       )
-        .subscribe(onCompleteUpdate)
-      println("end")
+
+      userObservable.subscribe(new Observer[UpdateResult] {
+        override def onNext(result: UpdateResult): Unit = println("Updated")
+
+        override def onError(e: Throwable): Unit = println("Failed" + e.getMessage)
+
+        override def onComplete(): Unit = println("Completed")
+      })
+    }
+      else if (commentType == true) {
+        val userObservable: Observable[UpdateResult] = usersCollection.updateOne(Filters.equal("_id", user),
+          Updates.combine(Updates.set("total_comments", numberOfComments), Updates.set("rank", rank))
+        )
+
+        userObservable.subscribe(new Observer[UpdateResult] {
+          override def onNext(result: UpdateResult): Unit = println("Updated")
+          override def onError(e: Throwable): Unit = println("Failed" + e.getMessage)
+          override def onComplete(): Unit = println("Completed")
+        })
     }
 
   }
-
-
 }
-
 
