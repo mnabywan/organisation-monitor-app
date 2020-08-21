@@ -1,5 +1,6 @@
 package controllers
 
+import auth.AuthAction
 import scalaj.http.{Http, HttpRequest, HttpResponse}
 import play.api.libs.json._
 import javax.inject._
@@ -14,12 +15,16 @@ import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import org.mongodb.scala.model.Filters
 import ranker.RankerDemo
 import ranker.Helpers._
+import javax.inject.Inject
+import javax.inject.Singleton
+import play.api.libs.json.Json
+import play.api.mvc.{AbstractController, ControllerComponents}
 /**
  * This controller creates an `Action` to handle HTTP requests to the
  * application's home page.
  */
 @Singleton
-class HomeController @Inject()(cc: ControllerComponents) extends AbstractController(cc) with play.api.i18n.I18nSupport {
+class HomeController @Inject()(cc: ControllerComponents, authAction: AuthAction) extends AbstractController(cc) with play.api.i18n.I18nSupport {
 
   private val producer = new Producer();
   private val endpoint = "https://api.pipedream.com/v1/sources/dc_gzuN4A/event_summaries?expand=event"
@@ -45,27 +50,17 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
     )
   )
 
-
   def people() = Action{ implicit request =>
     Ok(views.html.people(peopleForm))
   }
 
-  def ranking(name:String) = Action{
-//    val user = new User(name)
-//    user.numberOfCommits = RankerDemo.getCommitsNumber(name)
-//    user.numberOfAddedFiles = RankerDemo.getAddedFiles(name)
-//    user.numberOfModifiedFiles = RankerDemo.getModifiedFiles(name)
-//    user.numberOfRemovedFiles = RankerDemo.getRemovedFiles(name)
-//    user.numberOfPullRequests = RankerDemo.getPullRequestsNumber(name)
-//    user.countScore()
-
+  def ranking(name:String) = authAction{
     val searchUser = usersCollection.find(Filters.equal("_id", name)).results()
     if (searchUser == None){
-      Ok(views.html.ranking("No data for " + name))
-
+      NotFound
     }
     else {
-      Ok(views.html.ranking(RankerDemo.jsonizeDocs(searchUser)))
+      Ok(views.html.ranking(Json.toJson(RankerDemo.jsonizeDocs(searchUser))))
     }
   }
 
@@ -109,7 +104,7 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
 
   def commitsAll = Action{
     val commits = RankerDemo.getCommitsNumber()
-    Ok(views.html.ranking(commits))
+    Ok(views.html.ranking(Json.toJson(commits)))
   }
 
 }
