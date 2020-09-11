@@ -54,15 +54,55 @@ class HomeController @Inject()(cc: ControllerComponents, authAction: AuthAction)
     Ok(views.html.people(peopleForm))
   }
 
-  def ranking(name:String) = authAction{
+  def ranking(name:String) = Action{
     val searchUser = usersCollection.find(Filters.equal("_id", name)).results()
     if (searchUser == None){
       NotFound
     }
     else {
-      Ok(views.html.ranking(Json.toJson(RankerDemo.jsonizeDocs(searchUser))))
+      val json = Json.toJson(RankerDemo.jsonizeDocs(searchUser))
+      Ok(json)
+//      Ok(views.html.ranking(RankerDemo.jsonizeDocs(searchUser)))
     }
   }
+
+
+  def priv() = Action { implicit request: Request[AnyContent] =>
+    val sessionTokenOpt = request.session.get("sessionToken")
+    val username = request.session.get("username")
+
+    val response = Http("https://scala-api.eu.auth0.com/userinfo").
+
+      header("Authorization", f"Bearer ${sessionTokenOpt.get}").asString
+
+    //    val json = Json parse response.body.toString
+    val code = response.code
+    code match {
+      case 200 => {
+        val json = Json parse response.body.toString
+        val nickname = (json \ "nickname").as[String]
+        val email = (json \ "email").as[String]
+        print(email)
+        print(username.get.toString)
+        if (email.equals(username.get.toString)){
+          val searchUser = usersCollection.find(Filters.equal("_id", nickname)).results()
+          if (searchUser == None){
+            Ok("aka")
+          }
+          else {
+            val json = Json.toJson(RankerDemo.jsonizeDocs(searchUser))
+            Ok(json)
+          }
+        }
+        else{
+          Ok(email + "  " + username.toString)
+        }
+      }
+      case _ => Ok(code.toString)
+    }
+  }
+
+
 
   def index = Action {
     Ok(views.html.index("Your new application is ready."))
@@ -104,7 +144,7 @@ class HomeController @Inject()(cc: ControllerComponents, authAction: AuthAction)
 
   def commitsAll = Action{
     val commits = RankerDemo.getCommitsNumber()
-    Ok(views.html.ranking(Json.toJson(commits)))
+    Ok(views.html.ranking(commits))
   }
 
 }

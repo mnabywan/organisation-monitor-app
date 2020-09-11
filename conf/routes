@@ -11,6 +11,11 @@ GET     /ranking/:name              controllers.HomeController.ranking(name)
 GET     /commits                    controllers.HomeController.commitsAll
 POST    /people                     controllers.HomeController.newPerson
 POST    /newEvent                   controllers.HomeController.newEvent
+GET     /login                      controllers.LoggingController.login
+POST    /login                      controllers.LoggingController.loggingFormPost
+GET     /priv                       controllers.HomeController.priv
+
+
 # An example controller showing how to use dependency injection
 GET     /count                      controllers.CountController.count
 # An example controller showing how to write asynchronous code

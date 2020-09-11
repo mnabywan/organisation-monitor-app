@@ -1,0 +1,18 @@
+@import views.html.helper.CSRF
+@import views.html.helper.form
+
+@import views.html.helper.inputText
+@(loggingForm: Form[LoggingForm])(implicit request: RequestHeader,  messages: Messages)
+
+@main("This is a main page") {
+    <h2>Add a new task</h2>
+
+
+    @form(action = CSRF(routes.LoggingController.loggingFormPost())){
+        @inputText(loggingForm("username"))
+        @inputText(loggingForm("password"))
+        <input type="submit" value="Login">
+    }
+}
+
+

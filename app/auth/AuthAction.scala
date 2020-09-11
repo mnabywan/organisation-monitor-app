@@ -29,8 +29,11 @@ class AuthAction @Inject()(bodyParser: BodyParsers.Default, authService: AuthSer
       }
     } getOrElse Future.successful(Results.Unauthorized)     // no token was sent - return 401
 
-  private def extractBearerToken[A](request: Request[A]): Option[String] =
-    request.headers.get(HeaderNames.AUTHORIZATION) collect {
-      case headerTokenRegex(token) => token
-    }
+  private def extractBearerToken[A](request: Request[A]): Option[String] = {
+        request.headers.get(HeaderNames.AUTHORIZATION) collect {
+          case headerTokenRegex(token) => token
+        }
+//    val token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ilp4QkVYUUJiQ1FIX1FjYnpHQktnQSJ9.eyJpc3MiOiJodHRwczovL3NjYWxhLWFwaS5ldS5hdXRoMC5jb20vIiwic3ViIjoicFhLYW5OQnZMU3A3N0RQN2NFakltWkhhZHB0V1dyQmVAY2xpZW50cyIsImF1ZCI6Imh0dHBzOi8vbXktc2NhbGEtYXBpLmV4YW1wbGUuY29tIiwiaWF0IjoxNTk4NDM5MTMyLCJleHAiOjE1OTg1MjU1MzIsImF6cCI6InBYS2FuTkJ2TFNwNzdEUDdjRWpJbVpIYWRwdFdXckJlIiwiZ3R5IjoiY2xpZW50LWNyZWRlbnRpYWxzIn0.DAaCaBep1suhYe5SneRopqjRpS6ayiipGTvcVYsqEEyE2YbkjbEFsM6gfWjiBRYHAw41oQBsf1hB0-yGM21wXZ2umQ86TN_npgh-47C91ytmyQ34QLU3fGLjlCy92D0SJGWYHVUy_88YPrDigFUxN5w-9XwgzGuLzzaXxkbQrCadwRv1conCVBRpoa8aOAaxzKMuHGEJQ4_fFw-l4Mc2crYvYuvzuo8O5cS1gLsrt6S3NU1aIRtuJpPqEqEz-B0FDtlNraQ0HH0w7QAIDEwBMQ9bUhO_5S3wo84zqB8wOFLaqbAt9H2GDy01w0p4jbhWxAR2evdUB9DbB8eGotYVLQ"
+//    Option(token)
+  }
 }
